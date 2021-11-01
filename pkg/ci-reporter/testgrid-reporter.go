@@ -38,9 +38,11 @@ func (r *TestgridReport) RequestData(meta Meta, wg *sync.WaitGroup) (ReportData,
 	}
 
 	// If a release version got specified add additional jobs to report
-	if meta.Flags.ReleaseVersion != "" {
-		requiredJobs = append(requiredJobs, testgridJob{OutputName: fmt.Sprintf("%s-blocking", meta.Flags.ReleaseVersion), URLName: fmt.Sprintf("sig-release-%s-blocking", meta.Flags.ReleaseVersion), Emoji: masterBlockingEmoji})
-		requiredJobs = append(requiredJobs, testgridJob{OutputName: fmt.Sprintf("%s-informing", meta.Flags.ReleaseVersion), URLName: fmt.Sprintf("sig-release-%s-informing", meta.Flags.ReleaseVersion), Emoji: masterInformingEmoji})
+	if len(meta.Flags.ReleaseVersion) > 0 {
+		for _, r := range meta.Flags.ReleaseVersion {
+			requiredJobs = append(requiredJobs, testgridJob{OutputName: fmt.Sprintf("%s-blocking", r), URLName: fmt.Sprintf("sig-release-%s-blocking", r), Emoji: masterBlockingEmoji})
+			requiredJobs = append(requiredJobs, testgridJob{OutputName: fmt.Sprintf("%s-informing", r), URLName: fmt.Sprintf("sig-release-%s-informing", r), Emoji: masterInformingEmoji})
+		}
 	}
 
 	reportData := ReportData{}

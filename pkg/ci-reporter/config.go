@@ -19,6 +19,10 @@ package cireporter
 import (
 	"context"
 	"flag"
+	"fmt"
+	"log"
+	"regexp"
+	"strings"
 
 	"github.com/google/go-github/v34/github"
 	"github.com/kelseyhightower/envconfig"
@@ -36,8 +40,8 @@ type metaFlags struct {
 	ShortOn bool
 	// prints emojis
 	EmojisOff bool
-	// specifies a specific release version that should be included in the report like "1.22"
-	ReleaseVersion string
+	// specifies a specific release version that should be included in the report like "1.22" or "1.22, 1.21"
+	ReleaseVersion []string
 }
 
 // Meta meta struct to use ci-reporter functions
@@ -82,8 +86,33 @@ func SetMeta() Meta {
 		Flags: metaFlags{
 			ShortOn:        *isFlagShortSet,
 			EmojisOff:      *isFlagEmojiOff,
-			ReleaseVersion: *releaseVersion,
+			ReleaseVersion: splitReleaseVersionInput(*releaseVersion),
 		},
 		GitHubClient: ghClient,
 	}
+}
+
+// This function is used to split release version input ("1.22, 1.21" => ["1.22", "1.21"])
+func splitReleaseVersionInput(input string) []string {
+	re, err := regexp.Compile(`\d.\d\d`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	releaseVersion := []string{}
+
+	for _, e := range strings.Split(input, ",") {
+		if e != "" {
+			trimStr := strings.TrimSpace(e)
+			fmt.Println(trimStr)
+			found := re.MatchString(trimStr)
+
+			if found {
+				releaseVersion = append(releaseVersion, trimStr)
+			} else {
+				fmt.Printf("%s does not match\n", trimStr)
+			}
+		}
+	}
+	return releaseVersion
 }
