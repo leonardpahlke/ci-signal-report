@@ -30,15 +30,17 @@ import (
 	"github.com/google/go-github/v34/github"
 )
 
+// GithubReport used to implement RequestData & Print for github report data
 type GithubReport struct {
-	reportData ReportData
+	ReportData ReportData
 }
 
 // RequestData this function is used to get github report data
-func (r *GithubReport) RequestData(meta Meta, wg *sync.WaitGroup) (ReportData, error) {
+func (r *GithubReport) RequestData(meta Meta, wg *sync.WaitGroup) ReportData {
 	resolvedCardsID, err := findCardsID(meta.GitHubClient, githubCiSignalBoardProjectID, "Resolved")
 	if err != nil {
-		return nil, err
+		log.Fatalf("Could not find github card %v", err)
+		return ReportData{}
 	}
 	var githubIssueCardConfigs = []githubIssueCardConfig{
 		{
@@ -67,30 +69,24 @@ func (r *GithubReport) RequestData(meta Meta, wg *sync.WaitGroup) (ReportData, e
 		},
 	}
 
-	reportData := ReportData{}
-	for data := range assembleGithubRequests(meta, githubIssueCardConfigs) {
-		for k, v := range data {
-			reportData[k] = v
-		}
-	}
-	r.reportData = reportData
-	wg.Done()
-	return reportData, nil
+	// DataPostProcessing collects data requested via assembleGithubRequests/2 and returns ReportData
+	return meta.DataPostProcessing(r, "github", assembleGithubRequests(meta, githubIssueCardConfigs), wg)
 }
 
-// Print github data
-func (r GithubReport) Print(meta Meta) error {
-	for k, v := range r.reportData {
+// Print extends GithubReport and prints report data to the console
+func (r GithubReport) Print(meta Meta, reportData ReportData) {
+	// Print regular out
+	for _, data := range reportData.Data {
 		// Prepare header
-		headerLine := fmt.Sprintf("\n\n%s %s", k.Emoji, strings.ToUpper(k.Title))
+		headerLine := fmt.Sprintf("\n\n%s %s", data.Emoji, strings.ToUpper(data.Title))
 		if meta.Flags.EmojisOff {
-			headerLine = fmt.Sprintf("\n\n%s", strings.ToUpper(k.Title))
+			headerLine = fmt.Sprintf("\n\n%s", strings.ToUpper(data.Title))
 		}
 		fmt.Println(headerLine)
 
 		// sort report data after SIG
 		dataSortedAfterSigs := make(map[string][]ghIssueOverview)
-		for _, v := range v {
+		for _, v := range data.Records {
 			dataSortedAfterSigs[v.Sig] = append(dataSortedAfterSigs[v.Sig], ghIssueOverview{
 				URL:   v.URL,
 				ID:    v.ID,
@@ -107,12 +103,21 @@ func (r GithubReport) Print(meta Meta) error {
 			fmt.Println()
 		}
 	}
-	return nil
+}
+
+// PutData extends GithubReport and stores the data at runtime to the struct val ReportData
+func (r *GithubReport) PutData(reportData ReportData) {
+	r.ReportData = reportData
+}
+
+// GetData extends GithubReport and returns the data that has been stored at runtime int the struct val ReportData (counter to SaveData/1)
+func (r GithubReport) GetData() ReportData {
+	return r.ReportData
 }
 
 // run all github requests to assemble data
-func assembleGithubRequests(meta Meta, githubIssueCardConfigs []githubIssueCardConfig) chan ReportData {
-	c := make(chan ReportData)
+func assembleGithubRequests(meta Meta, githubIssueCardConfigs []githubIssueCardConfig) chan ReportDataField {
+	c := make(chan ReportDataField)
 	go func() {
 		defer close(c)
 		var wg sync.WaitGroup
@@ -125,7 +130,7 @@ func assembleGithubRequests(meta Meta, githubIssueCardConfigs []githubIssueCardC
 	return c
 }
 
-func sortDataIntoDataRecord(meta Meta, c chan ReportData, wg *sync.WaitGroup, cardCfg githubIssueCardConfig) {
+func sortDataIntoDataRecord(meta Meta, c chan ReportDataField, wg *sync.WaitGroup, cardCfg githubIssueCardConfig) {
 	if !(cardCfg.OmitWithFlagShort && meta.Flags.ShortOn) {
 		reportDataRecord := []ReportDataRecord{}
 		// request github data
@@ -138,13 +143,12 @@ func sortDataIntoDataRecord(meta Meta, c chan ReportData, wg *sync.WaitGroup, ca
 				Sig:   issue.Sig,
 			})
 		}
-		reportData := ReportData{}
-		reportData[ReportDataField{
-			Emoji: cardCfg.Emoji,
-			Title: cardCfg.CardsTitle,
-		}] = reportDataRecord
 		// send data through channel; data infos gathered
-		c <- reportData
+		c <- ReportDataField{
+			Emoji:   cardCfg.Emoji,
+			Title:   cardCfg.CardsTitle,
+			Records: reportDataRecord,
+		}
 	}
 	wg.Done()
 }
