@@ -19,6 +19,10 @@ package cireporter
 import (
 	"context"
 	"flag"
+	"fmt"
+	"log"
+	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/google/go-github/v34/github"
@@ -37,8 +41,8 @@ type metaFlags struct {
 	ShortOn bool
 	// EmojisOff tells if emojis should be printed
 	EmojisOff bool
-	// ReleaseVersion specifies a specific release version that should be included in the report like "1.22"
-	ReleaseVersion string
+	// specifies a specific release version that should be included in the report like "1.22" or "1.22, 1.21"
+	ReleaseVersion []string
 	// JsonOut specifies if the output should be in json format
 	JsonOut bool
 }
@@ -101,10 +105,35 @@ func SetMeta() Meta {
 		Flags: metaFlags{
 			ShortOn:        *isFlagShortSet,
 			EmojisOff:      *isFlagEmojiOff,
-			ReleaseVersion: *releaseVersion,
+			ReleaseVersion: splitReleaseVersionInput(*releaseVersion),
 			JsonOut:        *isJsonOut,
 		},
 		GitHubClient:       ghClient,
 		DataPostProcessing: dataPostProcessing,
 	}
+}
+
+// This function is used to split release version input ("1.22, 1.21" => ["1.22", "1.21"])
+func splitReleaseVersionInput(input string) []string {
+	re, err := regexp.Compile(`\d.\d\d`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	releaseVersion := []string{}
+
+	for _, e := range strings.Split(input, ",") {
+		if e != "" {
+			trimStr := strings.TrimSpace(e)
+			fmt.Println(trimStr)
+			found := re.MatchString(trimStr)
+
+			if found {
+				releaseVersion = append(releaseVersion, trimStr)
+			} else {
+				fmt.Printf("%s does not match\n", trimStr)
+			}
+		}
+	}
+	return releaseVersion
 }
