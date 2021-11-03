@@ -19,6 +19,7 @@ package cireporter
 import (
 	"context"
 	"flag"
+	"sync"
 
 	"github.com/google/go-github/v34/github"
 	"github.com/kelseyhightower/envconfig"
@@ -32,19 +33,35 @@ type metaEnv struct {
 
 // Flags that can be set using the ci-reporter
 type metaFlags struct {
-	// shortens the report output (less details)
+	// ShortOn tells if the report should be shortended (with less details)
 	ShortOn bool
-	// prints emojis
+	// EmojisOff tells if emojis should be printed
 	EmojisOff bool
-	// specifies a specific release version that should be included in the report like "1.22"
+	// ReleaseVersion specifies a specific release version that should be included in the report like "1.22"
 	ReleaseVersion string
+	// JsonOut specifies if the output should be in json format
+	JsonOut bool
 }
 
 // Meta meta struct to use ci-reporter functions
 type Meta struct {
-	Env          metaEnv
-	Flags        metaFlags
-	GitHubClient *github.Client
+	Env                metaEnv
+	Flags              metaFlags
+	GitHubClient       *github.Client
+	DataPostProcessing func(CIReport, string, chan ReportDataField, *sync.WaitGroup) ReportData
+}
+
+func dataPostProcessing(r CIReport, reportName string, chanReportDataField chan ReportDataField, wg *sync.WaitGroup) ReportData {
+	reportData := ReportData{
+		Data: []ReportDataField{},
+		Name: reportName,
+	}
+	for reportDataField := range chanReportDataField {
+		reportData.Data = append(reportData.Data, reportDataField)
+	}
+	r.PutData(reportData)
+	wg.Done()
+	return reportData
 }
 
 // SetMeta this function is used to set meta information that is being needed to generate ci-signal-report
@@ -56,9 +73,11 @@ func SetMeta() Meta {
 	// -emoji-off - default : on
 	isFlagEmojiOff := flag.Bool("emoji-off", false, "toggel if emojis should not be printed out")
 
-	// TODO: check input with regex
 	// -v default: ""
 	releaseVersion := flag.String("v", "", "specify a release version to get additional report data")
+
+	// -emoji-off - default : off
+	isJsonOut := flag.Bool("json", false, "toggel if output should be printed in json format")
 	flag.Parse()
 
 	var env metaEnv
@@ -83,7 +102,9 @@ func SetMeta() Meta {
 			ShortOn:        *isFlagShortSet,
 			EmojisOff:      *isFlagEmojiOff,
 			ReleaseVersion: *releaseVersion,
+			JsonOut:        *isJsonOut,
 		},
-		GitHubClient: ghClient,
+		GitHubClient:       ghClient,
+		DataPostProcessing: dataPostProcessing,
 	}
 }

@@ -27,15 +27,20 @@ func main() {
 	cireporters := []ci_reporter.CIReport{&ci_reporter.GithubReport{}, &ci_reporter.TestgridReport{}}
 
 	// request report data
+	report := ci_reporter.Report{}
 	var wg sync.WaitGroup
 	for _, r := range cireporters {
 		wg.Add(1)
-		r.RequestData(meta, &wg)
+		report = append(report, r.RequestData(meta, &wg))
 	}
 	wg.Wait()
 
 	// print report data
-	for _, r := range cireporters {
-		r.Print(meta)
+	if meta.Flags.JsonOut {
+		report.PrintJson()
+	} else {
+		for _, r := range cireporters {
+			r.Print(meta, r.GetData())
+		}
 	}
 }

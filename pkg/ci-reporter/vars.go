@@ -16,7 +16,12 @@ limitations under the License.
 
 package cireporter
 
-import "sync"
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"sync"
+)
 
 // Github card ids
 const (
@@ -37,26 +42,60 @@ const (
 )
 
 type CIReport interface {
-	RequestData(meta Meta, wg *sync.WaitGroup) (ReportData, error)
-	Print(meta Meta) error
+	RequestData(meta Meta, wg *sync.WaitGroup) ReportData
+	Print(meta Meta, reportData ReportData)
+	PutData(reportData ReportData)
+	GetData() ReportData
 }
 
-type ReportData map[ReportDataField][]ReportDataRecord
+// UnmarshalReport transforms a json obj into a Report struct
+func UnmarshalReport(data []byte) (Report, error) {
+	var r Report
+	err := json.Unmarshal(data, &r)
+	return r, err
+}
 
+// Marshal method to transform a Report into JSON format
+func (r *Report) Marshal() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+// PrintJson pretty print json to console
+func (r *Report) PrintJson() {
+	b, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		log.Fatalf("Could not marshal Report %v", err)
+	}
+	fmt.Print(string(b))
+}
+
+// Report wraps multiple report data objects
+type Report []ReportData
+
+// ReportData
+type ReportData struct {
+	Data []ReportDataField `json:"data"`
+	// Name like 'github' or 'testgrid'
+	Name string `json:"name"`
+}
+
+// ReportDataField
 type ReportDataField struct {
-	Emoji string
-	Title string
+	Emoji   string             `json:"emoji"`
+	Title   string             `json:"title"`
+	Records []ReportDataRecord `json:"records"`
 }
 
+// ReportDataRecord
 type ReportDataRecord struct {
-	Total   int
-	Passing int
-	Flaking int
-	Failing int
-	Stale   int
+	Total   int `json:"total"`
+	Passing int `json:"passing"`
+	Flaking int `json:"flaking"`
+	Failing int `json:"failing"`
+	Stale   int `json:"stale"`
 
-	URL   string
-	ID    int64
-	Title string
-	Sig   string
+	URL   string `json:"url"`
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
+	Sig   string `json:"sig"`
 }

@@ -25,12 +25,13 @@ import (
 	"sync"
 )
 
+// TestgridReport used to implement RequestData & Print for testgrid report data
 type TestgridReport struct {
-	reportData ReportData
+	ReportData ReportData
 }
 
 // RequestTestgridOverview this function is used to accumulate a summary of testgrid
-func (r *TestgridReport) RequestData(meta Meta, wg *sync.WaitGroup) (ReportData, error) {
+func (r *TestgridReport) RequestData(meta Meta, wg *sync.WaitGroup) ReportData {
 	// The report checks master-blocking and master-informing
 	requiredJobs := []testgridJob{
 		{OutputName: "Master-Blocking", URLName: "sig-release-master-blocking", Emoji: masterBlockingEmoji},
@@ -43,24 +44,17 @@ func (r *TestgridReport) RequestData(meta Meta, wg *sync.WaitGroup) (ReportData,
 		requiredJobs = append(requiredJobs, testgridJob{OutputName: fmt.Sprintf("%s-informing", meta.Flags.ReleaseVersion), URLName: fmt.Sprintf("sig-release-%s-informing", meta.Flags.ReleaseVersion), Emoji: masterInformingEmoji})
 	}
 
-	reportData := ReportData{}
-	for job := range assembleTestgridRequests(meta, requiredJobs) {
-		for k, v := range job {
-			reportData[k] = v
-		}
-	}
-	r.reportData = reportData
-	wg.Done()
-	return reportData, nil
+	return meta.DataPostProcessing(r, "testgrid", assembleTestgridRequests(meta, requiredJobs), wg)
 }
 
-func (r *TestgridReport) Print(meta Meta) error {
-	for k, v := range r.reportData {
-		headerLine := fmt.Sprintf("%s Tests in %s", k.Emoji, k.Title)
+// Print extends TestgridReport and prints report data to the console
+func (r *TestgridReport) Print(meta Meta, reportData ReportData) {
+	for _, reportField := range reportData.Data {
+		headerLine := fmt.Sprintf("%s Tests in %s", reportField.Emoji, reportField.Title)
 		if meta.Flags.EmojisOff {
-			headerLine = fmt.Sprintf("Tests in %s", k.Title)
+			headerLine = fmt.Sprintf("Tests in %s", reportField.Title)
 		}
-		for _, stat := range v {
+		for _, stat := range reportField.Records {
 			fmt.Println(headerLine)
 			fmt.Printf("\t%d jobs total\n", stat.Total)
 			fmt.Printf("\t%d are passing\n", stat.Passing)
@@ -70,11 +64,20 @@ func (r *TestgridReport) Print(meta Meta) error {
 			fmt.Print("\n\n")
 		}
 	}
-	return nil
 }
 
-func assembleTestgridRequests(meta Meta, requiredJobs []testgridJob) chan ReportData {
-	c := make(chan ReportData)
+// PutData extends TestgridReport and stores the data at runtime to the struct val ReportData
+func (r *TestgridReport) PutData(reportData ReportData) {
+	r.ReportData = reportData
+}
+
+// GetData extends TestgridReport and returns the data that has been stored at runtime int the struct val ReportData (counter to SaveData/1)
+func (r TestgridReport) GetData() ReportData {
+	return r.ReportData
+}
+
+func assembleTestgridRequests(meta Meta, requiredJobs []testgridJob) chan ReportDataField {
+	c := make(chan ReportDataField)
 	go func() {
 		defer close(c)
 		wg := sync.WaitGroup{}
@@ -85,11 +88,11 @@ func assembleTestgridRequests(meta Meta, requiredJobs []testgridJob) chan Report
 				if err != nil {
 					log.Fatalf("error %v", err)
 				}
-				reportData := ReportData{}
-				reportData[ReportDataField{
-					Emoji: job.Emoji,
-					Title: job.OutputName,
-				}] = []ReportDataRecord{getStatistics(jobs)}
+				reportData := ReportDataField{
+					Emoji:   job.Emoji,
+					Title:   job.OutputName,
+					Records: []ReportDataRecord{getStatistics(jobs)},
+				}
 				c <- reportData
 				wg.Done()
 			}(j)
