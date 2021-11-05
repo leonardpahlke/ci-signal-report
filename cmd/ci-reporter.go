@@ -38,8 +38,8 @@ func main() {
 	wg.Wait()
 
 	// print report data
-	if meta.Flags.JsonOut {
-		report.PrintJson()
+	if meta.Flags.JSONOut {
+		report.PrintJSON()
 	} else {
 		for _, r := range cireporters {
 			reportData := r.GetData()

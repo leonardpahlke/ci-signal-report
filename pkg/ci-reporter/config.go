@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"sync"
@@ -42,8 +43,8 @@ type metaFlags struct {
 	EmojisOff bool
 	// specifies a specific release version that should be included in the report like "1.22" or "1.22, 1.21"
 	ReleaseVersion []string
-	// JsonOut specifies if the output should be in json format
-	JsonOut bool
+	// JSONOut specifies if the output should be in json format
+	JSONOut bool
 }
 
 // Meta meta struct to use ci-reporter functions
@@ -80,14 +81,14 @@ func SetMeta() Meta {
 	releaseVersion := flag.String("v", "", "specify a release version to get additional report data")
 
 	// -emoji-off - default : off
-	isJsonOut := flag.Bool("json", false, "toggel if output should be printed in json format")
+	isJSONOut := flag.Bool("json", false, "toggel if output should be printed in json format")
 	flag.Parse()
 
 	var env metaEnv
 	err := envconfig.Process("", &env)
 	if err != nil {
 		// "Make sure to provide a GITHUB_AUTH_TOKEN, received an error during env decoding"
-		panic(err)
+		log.Fatalf("Error processing flags.\n[ERROR] %v", err)
 	}
 
 	// Setup github client
@@ -105,7 +106,7 @@ func SetMeta() Meta {
 			ShortOn:        *isFlagShortSet,
 			EmojisOff:      *isFlagEmojiOff,
 			ReleaseVersion: splitReleaseVersionInput(*releaseVersion),
-			JsonOut:        *isJsonOut,
+			JSONOut:        *isJSONOut,
 		},
 		GitHubClient:       ghClient,
 		DataPostProcessing: dataPostProcessing,

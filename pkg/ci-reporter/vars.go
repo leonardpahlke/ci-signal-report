@@ -44,14 +44,17 @@ const (
 	statusNewTestEmoji   = "\U00002728"
 )
 
+// Severity used to rank report records
 type Severity int
 
+// HighSeverity, MediumSeverity, LightSeverity used to rank report records from 0...3
 const (
 	HighSeverity   Severity = 3
 	MediumSeverity Severity = 2
 	LightSeverity  Severity = 1
 )
 
+// CIReport this interface to implement Reporters
 type CIReport interface {
 	RequestData(meta Meta, wg *sync.WaitGroup) ReportData
 	Print(meta Meta, reportData ReportData)
@@ -71,8 +74,8 @@ func (r *Report) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-// PrintJson pretty print json to console
-func (r *Report) PrintJson() {
+// PrintJSON pretty print json to console
+func (r *Report) PrintJSON() {
 	b, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		log.Fatalf("Could not marshal Report %v", err)
@@ -83,21 +86,21 @@ func (r *Report) PrintJson() {
 // Report wraps multiple report data objects
 type Report []ReportData
 
-// ReportData
+// ReportData that contains multiple data fields
 type ReportData struct {
 	Data []ReportDataField `json:"data"`
 	// Name like 'github' or 'testgrid'
 	Name string `json:"name"`
 }
 
-// ReportDataField
+// ReportDataField one field of a report that contains multiple records
 type ReportDataField struct {
 	Emoji   string             `json:"emoji"`
 	Title   string             `json:"title"`
 	Records []ReportDataRecord `json:"records"`
 }
 
-// ReportDataRecord
+// ReportDataRecord that contain specifc information about a testgrid job or about a github issue (flexible)
 type ReportDataRecord struct {
 	// record url
 	URL string `json:"url"`

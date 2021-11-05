@@ -34,12 +34,12 @@ type TestgridReport struct {
 	ReportData ReportData
 }
 
-// RequestTestgridOverview this function is used to accumulate a summary of testgrid
+// RequestData this function is used to accumulate a summary of testgrid
 func (r *TestgridReport) RequestData(meta Meta, wg *sync.WaitGroup) ReportData {
 	// The report checks master-blocking and master-informing
 	requiredJobs := []testgridJob{
-		{OutputName: "Master-Blocking", URLName: "sig-release-master-blocking", Emoji: masterBlockingEmoji},
-		{OutputName: "Master-Informing", URLName: "sig-release-master-informing", Emoji: masterInformingEmoji},
+		{OutputName: "Master-Blocking", URLName: string(sigReleaseMasterBlocking), Emoji: masterBlockingEmoji},
+		{OutputName: "Master-Informing", URLName: string(sigReleaseMasterInforming), Emoji: masterInformingEmoji},
 	}
 
 	// If a release version got specified add additional jobs to report
@@ -103,8 +103,8 @@ func assembleTestgridRequests(meta Meta, requiredJobs []testgridJob) chan Report
 		for _, j := range requiredJobs {
 			wg.Add(1)
 			go func(job testgridJob) {
-				jobBaseUrl := fmt.Sprintf("https://testgrid.k8s.io/%s", job.URLName)
-				jobsData, err := reqTestgridSiteData(job, jobBaseUrl)
+				jobBaseURL := fmt.Sprintf("https://testgrid.k8s.io/%s", job.URLName)
+				jobsData, err := reqTestgridSiteData(job, jobBaseURL)
 				if err != nil {
 					log.Fatalf("error %v", err)
 				}
@@ -112,8 +112,8 @@ func assembleTestgridRequests(meta Meta, requiredJobs []testgridJob) chan Report
 
 				if !meta.Flags.ShortOn {
 					for jobName, jobData := range jobsData {
-						if jobData.OverallStatus != Passing {
-							records = append(records, getDetails(jobName, jobData, jobBaseUrl, meta.Flags.EmojisOff))
+						if jobData.OverallStatus != passing {
+							records = append(records, getDetails(jobName, jobData, jobBaseURL, meta.Flags.EmojisOff))
 						}
 					}
 				}
@@ -133,9 +133,9 @@ func assembleTestgridRequests(meta Meta, requiredJobs []testgridJob) chan Report
 }
 
 // This function is used to request job summary data from a testgrid subpage
-func reqTestgridSiteData(job testgridJob, jobBaseUrl string) (TestgridData, error) {
+func reqTestgridSiteData(job testgridJob, jobBaseURL string) (TestgridData, error) {
 	// This url points to testgrid/summary which returns a JSON document
-	url := fmt.Sprintf("%s/summary", jobBaseUrl)
+	url := fmt.Sprintf("%s/summary", jobBaseURL)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -154,39 +154,39 @@ func reqTestgridSiteData(job testgridJob, jobBaseUrl string) (TestgridData, erro
 }
 
 // This function is used to count up the status from testgrid tests
-func getSummary(jobs map[string]TestgridValue) ReportDataRecord {
+func getSummary(jobs map[string]testgridValue) ReportDataRecord {
 	result := ReportDataRecord{ID: testgridReportSummary}
-	statuses := map[OverallStatus]int{Total: len(jobs), Passing: 0, Failing: 0, Flaky: 0, Stale: 0}
+	statuses := map[overallStatus]int{total: len(jobs), passing: 0, failing: 0, flaky: 0, stale: 0}
 	for _, v := range jobs {
-		if v.OverallStatus == Passing {
-			statuses[Passing]++
-		} else if v.OverallStatus == Failing {
-			statuses[Failing]++
-		} else if v.OverallStatus == Flaky {
-			statuses[Flaky]++
+		if v.OverallStatus == passing {
+			statuses[passing]++
+		} else if v.OverallStatus == failing {
+			statuses[failing]++
+		} else if v.OverallStatus == flaky {
+			statuses[flaky]++
 		} else {
-			statuses[Stale]++
+			statuses[stale]++
 		}
 	}
-	result.Notes = append(result.Notes, fmt.Sprintf("%d jobs %s", statuses[Total], strings.ToLower(string(Total))))
-	result.Notes = append(result.Notes, fmt.Sprintf("%d jobs %s", statuses[Passing], strings.ToLower(string(Passing))))
-	result.Notes = append(result.Notes, fmt.Sprintf("%d jobs %s", statuses[Flaky], strings.ToLower(string(Flaky))))
-	result.Notes = append(result.Notes, fmt.Sprintf("%d jobs %s", statuses[Failing], strings.ToLower(string(Failing))))
-	if statuses[Stale] != 0 {
-		result.Notes = append(result.Notes, fmt.Sprintf("%d jobs %s", statuses[Stale], strings.ToLower(string(Stale))))
+	result.Notes = append(result.Notes, fmt.Sprintf("%d jobs %s", statuses[total], strings.ToLower(string(total))))
+	result.Notes = append(result.Notes, fmt.Sprintf("%d jobs %s", statuses[passing], strings.ToLower(string(passing))))
+	result.Notes = append(result.Notes, fmt.Sprintf("%d jobs %s", statuses[flaky], strings.ToLower(string(flaky))))
+	result.Notes = append(result.Notes, fmt.Sprintf("%d jobs %s", statuses[failing], strings.ToLower(string(failing))))
+	if statuses[stale] != 0 {
+		result.Notes = append(result.Notes, fmt.Sprintf("%d jobs %s", statuses[stale], strings.ToLower(string(stale))))
 	}
 	return result
 }
 
 // This function is used get additional information about testgrid jobs
-func getDetails(jobName string, jobData TestgridValue, jobBaseUrl string, emojisOff bool) ReportDataRecord {
+func getDetails(jobName string, jobData testgridValue, jobBaseURL string, emojisOff bool) ReportDataRecord {
 	result := ReportDataRecord{ID: testgridReportDetails}
 	result.Status = string(jobData.OverallStatus)
 	result.Title = jobName
-	result.URL = fmt.Sprintf("%s#%s", jobBaseUrl, jobName)
+	result.URL = fmt.Sprintf("%s#%s", jobBaseURL, jobName)
 
 	// If the status is failing give information about failing tests
-	if jobData.OverallStatus == Failing {
+	if jobData.OverallStatus == failing {
 		// Filter sigs
 		sigRegex := regexp.MustCompile(`sig-[a-zA-Z]+`)
 		sigsInvolved := map[string]int{}
@@ -225,7 +225,7 @@ func getDetails(jobName string, jobData TestgridValue, jobBaseUrl string, emojis
 	}
 
 	highlightEmoji := ""
-	if jobData.OverallStatus == Failing {
+	if jobData.OverallStatus == failing {
 		highlightEmoji = statusFailingEmoji
 	} else {
 		highlightEmoji = statusFlakyEmoji
@@ -276,7 +276,7 @@ type testgridJob struct {
 // The types below reflect testgrid summary json (e.g. https://testgrid.k8s.io/sig-release-master-informing/summary)
 
 // TestgridData contains all jobs under one specific field like 'sig-release-master-informing'
-type TestgridData map[string]TestgridValue
+type TestgridData map[string]testgridValue
 
 // UnmarshalTestgrid []byte into TestgridData
 func UnmarshalTestgrid(data []byte) (TestgridData, error) {
@@ -290,28 +290,27 @@ func (r *TestgridData) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-// TestgridValue information about a specifc job
-type TestgridValue struct {
-	Alert               string            `json:"alert"`
-	LastRunTimestamp    int64             `json:"last_run_timestamp"`
-	LastUpdateTimestamp int64             `json:"last_update_timestamp"`
-	LatestGreen         string            `json:"latest_green"`
-	OverallStatus       OverallStatus     `json:"overall_status"`
-	OverallStatusIcon   OverallStatusIcon `json:"overall_status_icon"`
-	Status              string            `json:"status"`
-	Tests               []Test            `json:"tests"`
-	DashboardName       DashboardName     `json:"dashboard_name"`
-	Healthiness         Healthiness       `json:"healthiness"`
-	BugURL              string            `json:"bug_url"`
+// testgridValue information about a specifc job
+type testgridValue struct {
+	Alert               string        `json:"alert"`
+	LastRunTimestamp    int64         `json:"last_run_timestamp"`
+	LastUpdateTimestamp int64         `json:"last_update_timestamp"`
+	LatestGreen         string        `json:"latest_green"`
+	OverallStatus       overallStatus `json:"overall_status"`
+	Status              string        `json:"status"`
+	Tests               []test        `json:"tests"`
+	DashboardName       dashboardName `json:"dashboard_name"`
+	Healthiness         healthiness   `json:"healthiness"`
+	BugURL              string        `json:"bug_url"`
 }
 
-// Healthiness
-type Healthiness struct {
+// healthiness
+type healthiness struct {
 	Tests             []interface{} `json:"tests"`
 	PreviousFlakiness int64         `json:"previousFlakiness"`
 }
 
-type Test struct {
+type test struct {
 	DisplayName    string        `json:"display_name"`
 	TestName       string        `json:"test_name"`
 	FailCount      int64         `json:"fail_count"`
@@ -325,29 +324,21 @@ type Test struct {
 	FailTestLink   string        `json:"fail_test_link"`
 }
 
-type DashboardName string
+type dashboardName string
 
 const (
-	SigReleaseMasterInforming DashboardName = "sig-release-master-informing"
-	SigReleaseMasterBlocking  DashboardName = "sig-release-master-blocking"
+	sigReleaseMasterInforming dashboardName = "sig-release-master-informing"
+	sigReleaseMasterBlocking  dashboardName = "sig-release-master-blocking"
 )
 
-type OverallStatus string
+type overallStatus string
 
 const (
-	Total   OverallStatus = "TOTAL"
-	Failing OverallStatus = "FAILING"
-	Flaky   OverallStatus = "FLAKY"
-	Passing OverallStatus = "PASSING"
-	Stale   OverallStatus = "STALE"
-)
-
-type OverallStatusIcon string
-
-const (
-	Done                OverallStatusIcon = "done"
-	RemoveCircleOutline OverallStatusIcon = "remove_circle_outline"
-	Warning             OverallStatusIcon = "warning"
+	total   overallStatus = "TOTAL"
+	failing overallStatus = "FAILING"
+	flaky   overallStatus = "FLAKY"
+	passing overallStatus = "PASSING"
+	stale   overallStatus = "STALE"
 )
 
 // This information is used internally to differentiate between summary and detail ReportDataRecords
