@@ -20,7 +20,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 	"sync"
@@ -115,11 +114,7 @@ func SetMeta() Meta {
 
 // This function is used to split release version input ("1.22, 1.21" => ["1.22", "1.21"])
 func splitReleaseVersionInput(input string) []string {
-	re, err := regexp.Compile(`\d.\d\d`)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	re := regexp.MustCompile(`\d.\d\d`)
 	releaseVersion := []string{}
 
 	for _, e := range strings.Split(input, ",") {

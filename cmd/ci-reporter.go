@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	ci_reporter "github.com/leonardpahlke/ci-signal-report/pkg/ci-reporter"
@@ -40,7 +42,9 @@ func main() {
 		report.PrintJson()
 	} else {
 		for _, r := range cireporters {
-			r.Print(meta, r.GetData())
+			reportData := r.GetData()
+			fmt.Printf("\n%s REPORT\n", strings.ToUpper(reportData.Name))
+			r.Print(meta, reportData)
 		}
 	}
 }

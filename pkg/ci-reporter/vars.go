@@ -37,8 +37,19 @@ const (
 	notYetStartedEmoji   = "\U0001F914"
 	observingEmoji       = "\U0001F440"
 	resolvedEmoji        = "\U0001F389"
-	masterBlockingEmoji  = "\U000026D4"
+	masterBlockingEmoji  = "\U0001F525"
 	masterInformingEmoji = "\U0001F4A1"
+	statusFailingEmoji   = "\U0001F534"
+	statusFlakyEmoji     = "\U0001F535"
+	statusNewTestEmoji   = "\U00002728"
+)
+
+type Severity int
+
+const (
+	HighSeverity   Severity = 3
+	MediumSeverity Severity = 2
+	LightSeverity  Severity = 1
 )
 
 type CIReport interface {
@@ -88,14 +99,20 @@ type ReportDataField struct {
 
 // ReportDataRecord
 type ReportDataRecord struct {
-	Total   int `json:"total"`
-	Passing int `json:"passing"`
-	Flaking int `json:"flaking"`
-	Failing int `json:"failing"`
-	Stale   int `json:"stale"`
-
-	URL   string `json:"url"`
-	ID    int64  `json:"id"`
+	// record url
+	URL string `json:"url"`
+	// record identifier
+	ID int64 `json:"id"`
+	// record title
 	Title string `json:"title"`
-	Sig   string `json:"sig"`
+	// k8s sig reference
+	Sig string `json:"sig"`
+	// collection of additional information
+	Notes []string `json:"notes"`
+	// record status
+	Status string `json:"status"`
+	// can be set to show importance
+	Severity Severity `json:"severity"`
+	// can be set to highlight the record (with an emoji for example)
+	Highlight string `json:"highlight"`
 }
