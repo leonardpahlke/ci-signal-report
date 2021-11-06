@@ -87,7 +87,7 @@ func SetMeta() Meta {
 
 	// -emoji-off - default : off
 	specificReport := flag.String("report", "", fmt.Sprintf("Specify report, options: '%s', '%s'", githubReport, testgridReport))
-  
+
 	flag.Parse()
 
 	var env metaEnv

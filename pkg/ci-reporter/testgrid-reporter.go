@@ -234,7 +234,7 @@ func getDetails(jobName string, jobData testgridValue, jobBaseURL string, emojis
 	severity := Severity(0)
 	if testgridRegexRecentRunsFloat <= newTestThreshhold {
 		severity = LightSeverity
-		highlightEmoji = statusNewTestEmoji
+		highlightEmoji = statusNewEmoji
 	} else {
 		if recentSuccessRate <= thresholdWarning {
 			severity = HighSeverity

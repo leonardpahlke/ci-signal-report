@@ -29,14 +29,6 @@ const (
 	testgridReport = "testgrid"
 )
 
-// Github card ids
-const (
-	newCardsID                   = 4212817
-	underInvestigationCardsID    = 4212819
-	observingCardsID             = 4212821
-	githubCiSignalBoardProjectID = 2093513
-)
-
 // Emojis
 const (
 	inFlightEmoji        = "\U0001F6EB"
@@ -47,7 +39,21 @@ const (
 	masterInformingEmoji = "\U0001F4A1"
 	statusFailingEmoji   = "\U0001F534"
 	statusFlakyEmoji     = "\U0001F535"
-	statusNewTestEmoji   = "\U00002728"
+	statusNewEmoji       = "\U0001F31F"
+	statusOldEmoji       = "\U0001F319"
+	statusActiveEmoji    = "\U000026A1"
+	statusAttentionEmoji = "\U0001F3F4"
+)
+
+const (
+	colorReset = "\033[0m"
+	colorRed   = "\033[31m"
+	colorGreen = "\033[32m"
+	// colorYellow = "\033[33m"
+	colorBlue = "\033[34m"
+	// colorPurple = "\033[35m"
+	// colorCyan   = "\033[36m"
+	// colorWhite  = "\033[37m"
 )
 
 // Severity used to rank report records
