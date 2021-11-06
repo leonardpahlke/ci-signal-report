@@ -51,7 +51,7 @@ func (r *GithubReport) RequestData(meta Meta, wg *sync.WaitGroup) ReportData {
 		},
 	}
 	// request github issue data
-	allReqGithubIssues := GithubIssuesAfterId{}
+	allReqGithubIssues := GithubIssuesAfterID{}
 	var internalWg sync.WaitGroup
 	for _, cfg := range requestCfg {
 		internalWg.Add(1)
@@ -96,7 +96,7 @@ func (r GithubReport) GetData() ReportData {
 }
 
 // run all github requests to assemble data
-func transformIntoReportData(meta Meta, issues GithubIssuesAfterId) chan ReportDataField {
+func transformIntoReportData(meta Meta, issues GithubIssuesAfterID) chan ReportDataField {
 	c := make(chan ReportDataField)
 	sigRegex := regexp.MustCompile(`sig/[a-zA-Z]+`)
 	go func() {
@@ -174,12 +174,13 @@ func transformIntoReportData(meta Meta, issues GithubIssuesAfterId) chan ReportD
 	return c
 }
 
-func GetGithubIssues(cfg GithubIssueRequest) GithubIssuesAfterId {
+// GetGithubIssues get github issues
+func GetGithubIssues(cfg GithubIssueRequest) GithubIssuesAfterID {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues%s", cfg.Owner, cfg.Repo, "?state=open")
 	for param, val := range cfg.Params {
 		url += fmt.Sprintf("&%s=%s", param, val)
 	}
-	collectedIssues := GithubIssuesAfterId{}
+	collectedIssues := GithubIssuesAfterID{}
 	for issues := range assembleGithubIssues(url, cfg.AuthToken) {
 		for k, issue := range issues {
 			collectedIssues[k] = issue
@@ -188,8 +189,8 @@ func GetGithubIssues(cfg GithubIssueRequest) GithubIssuesAfterId {
 	return collectedIssues
 }
 
-func assembleGithubIssues(url string, authToken string) chan GithubIssuesAfterId {
-	c := make(chan GithubIssuesAfterId)
+func assembleGithubIssues(url string, authToken string) chan GithubIssuesAfterID {
+	c := make(chan GithubIssuesAfterID)
 	go func() {
 		defer close(c)
 		wg := sync.WaitGroup{}
@@ -201,7 +202,7 @@ func assembleGithubIssues(url string, authToken string) chan GithubIssuesAfterId
 }
 
 // requestGithubIssues sends a http request to github to list issues
-func requestGithubIssues(c chan GithubIssuesAfterId, wg *sync.WaitGroup, url string, page int, authToken string) {
+func requestGithubIssues(c chan GithubIssuesAfterID, wg *sync.WaitGroup, url string, page int, authToken string) {
 	url = fmt.Sprintf("%s&%s=%d", url, string(IssueReqParamPage), page)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -236,8 +237,8 @@ func requestGithubIssues(c chan GithubIssuesAfterId, wg *sync.WaitGroup, url str
 	wg.Done()
 }
 
-func filterGithubIssues(issues GithubIssues) GithubIssuesAfterId {
-	filteredIssues := GithubIssuesAfterId{}
+func filterGithubIssues(issues GithubIssues) GithubIssuesAfterID {
+	filteredIssues := GithubIssuesAfterID{}
 	for _, i := range issues {
 		fine := true
 		for _, label := range i.Labels {
@@ -264,9 +265,13 @@ func checkTimeBefore(s string, u time.Time) bool {
 
 // GITHUB REQUEST
 
+// GithubIssueRequestParameters used to define how to pull issues from github useing GetGithubIssues
 type GithubIssueRequestParameters map[GithubIssueRequestParameter]string
+
+// GithubIssueRequestParameter parameter option that can be used to request issues from github
 type GithubIssueRequestParameter string
 
+// IssueReqParamLabels, IssueReqParamSort, IssueReqParamSince, IssueReqParamPerpage can be set to define how to get issues from github,  IssueReqParamPage get overwritten is not applied
 const (
 	IssueReqParamLabels  GithubIssueRequestParameter = "labels"
 	IssueReqParamSort    GithubIssueRequestParameter = "sort"
@@ -288,8 +293,8 @@ type GithubIssueRequest struct {
 // GithubIssues contains multiple GithubIssueElement
 type GithubIssues []GithubIssueElement
 
-// GithubIssuesAfterId issue id points to GithubIssueElement
-type GithubIssuesAfterId map[int64]GithubIssueElement
+// GithubIssuesAfterID issue id points to GithubIssueElement
+type GithubIssuesAfterID map[int64]GithubIssueElement
 
 // UnmarshalGithubIssue transforms []byte into GithubIssues
 func UnmarshalGithubIssue(data []byte) (GithubIssues, error) {
