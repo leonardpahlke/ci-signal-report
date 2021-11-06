@@ -43,12 +43,12 @@ func (r *GithubReport) RequestData(meta Meta, wg *sync.WaitGroup) ReportData {
 			Params:    GithubIssueRequestParameters{IssueReqParamLabels: "kind/failing-test", IssueReqParamSince: "2021-09-01", IssueReqParamSort: "updated", IssueReqParamPerpage: "20"},
 			AuthToken: meta.Env.GithubToken,
 		},
-		// {
-		// 	Owner:     "kubernetes",
-		// 	Repo:      "kubernetes",
-		// 	Params:    GithubIssueRequestParameters{IssueReqParamLabels: "kind/flake", IssueReqParamSince: "2021-09-01", IssueReqParamSort: "updated", IssueReqParamPerpage: "20"},
-		// 	AuthToken: meta.Env.GithubToken,
-		// },
+		{
+			Owner:     "kubernetes",
+			Repo:      "kubernetes",
+			Params:    GithubIssueRequestParameters{IssueReqParamLabels: "kind/flake", IssueReqParamSince: "2021-09-01", IssueReqParamSort: "updated", IssueReqParamPerpage: "20"},
+			AuthToken: meta.Env.GithubToken,
+		},
 	}
 	// request github issue data
 	allReqGithubIssues := GithubIssuesAfterId{}
@@ -70,18 +70,19 @@ func (r *GithubReport) RequestData(meta Meta, wg *sync.WaitGroup) ReportData {
 
 // Print extends GithubReport and prints report data to the console
 func (r GithubReport) Print(meta Meta, reportData ReportData) {
-	// Print regular out
+	fmt.Print("\n\n")
 	for _, data := range reportData.Data {
-		// print sorted report data
 		for _, records := range data.Records {
-			fmt.Printf("#%d %s %s\n", records.ID, records.Highlight, records.Sig)
-			fmt.Printf("- %s\n", records.Title)
-			fmt.Printf("- %s\n", records.URL)
+			fmt.Printf("#%d %s %s\n", records.ID, records.Title, records.Sig)
+			if !meta.Flags.ShortOn {
+				fmt.Printf("- %s\n", records.URL)
+			}
 			for _, note := range records.Notes {
 				fmt.Printf("- %s\n", note)
 			}
 		}
 	}
+	fmt.Println()
 }
 
 // PutData extends GithubReport and stores the data at runtime to the struct val ReportData
@@ -97,21 +98,44 @@ func (r GithubReport) GetData() ReportData {
 // run all github requests to assemble data
 func transformIntoReportData(meta Meta, issues GithubIssuesAfterId) chan ReportDataField {
 	c := make(chan ReportDataField)
+	sigRegex := regexp.MustCompile(`sig/[a-zA-Z]+`)
 	go func() {
 		defer close(c)
 		var wg sync.WaitGroup
 		for _, issue := range issues {
 			wg.Add(1)
 			go func(issue GithubIssueElement) {
-				sigRegex := regexp.MustCompile(`sig/[a-zA-Z]+`)
-				sigsInvolved := []string{}
-				notes := []string{fmt.Sprintf("Created %s, Updated %s, Comments: %d", strings.Split(issue.CreatedAt, "T")[0], strings.Split(issue.UpdatedAt, "T")[0], issue.Comments)}
+				notes := []string{}
+				// add timestamp to report notes
+				if !meta.Flags.ShortOn {
+					updatedHighlight := ""
+					createdHighlight := ""
+					if !meta.Flags.EmojisOff {
+						if checkTimeBefore(issue.UpdatedAt, time.Now().AddDate(0, -1, 0)) {
+							updatedHighlight += statusFailingEmoji
+						}
+						if !checkTimeBefore(issue.UpdatedAt, time.Now().AddDate(0, 0, -2)) {
+							updatedHighlight += statusNewEmoji
+						}
+						if checkTimeBefore(issue.CreatedAt, time.Now().AddDate(0, -1, 0)) {
+							createdHighlight += statusFailingEmoji
+						}
+						if !checkTimeBefore(issue.CreatedAt, time.Now().AddDate(0, 0, -3)) {
+							createdHighlight += statusNewEmoji
+						}
+					}
+					notes = append(notes, fmt.Sprintf("%sCreated %s, %sUpdated %s, Comments: %d", createdHighlight, strings.Split(issue.CreatedAt, "T")[0], updatedHighlight, strings.Split(issue.UpdatedAt, "T")[0], issue.Comments))
+				}
+				// add lables to notes
 				lablesToNote := ""
+				sigsInvolved := []string{}
 				for _, label := range issue.Labels {
+					// filter sigs from notes
 					sig := sigRegex.FindString(label.Name)
 					if sig != "" {
 						sigsInvolved = append(sigsInvolved, sig)
 					}
+					// filter flag priority & kind/
 					if strings.Contains(label.Name, "priority") {
 						lablesToNote += fmt.Sprintf("%s%s%s ", colorGreen, label.Name, colorReset)
 					}
@@ -119,30 +143,26 @@ func transformIntoReportData(meta Meta, issues GithubIssuesAfterId) chan ReportD
 						lablesToNote += fmt.Sprintf("%s%s%s ", colorRed, label.Name, colorReset)
 					}
 				}
-				if issue.Milestone != nil {
-					lablesToNote += fmt.Sprintf("%smilestone %s%s", colorBlue, issue.Milestone.Title, colorReset)
+				// add milestone to lables if it is set
+				if !meta.Flags.ShortOn {
+					if issue.Milestone != nil {
+						lablesToNote += fmt.Sprintf("%smilestone %s%s", colorBlue, issue.Milestone.Title, colorReset)
+					}
 				}
 				if lablesToNote != "" {
 					notes = append(notes, lablesToNote)
 				}
-				highlight := ""
-				if checkTimeBefore(issue.CreatedAt, time.Now().AddDate(0, -3, 0)) {
-					highlight += statusOldEmoji
-				}
-				if !checkTimeBefore(issue.CreatedAt, time.Now().AddDate(0, 0, -5)) {
-					highlight += statusNewEmoji
-				}
+				// set information in ReportDataRecord
 				c <- ReportDataField{
 					Emoji: "",
 					Title: "",
 					Records: []ReportDataRecord{
 						{
-							URL:       issue.HTMLURL,
-							ID:        issue.Number,
-							Title:     issue.Title,
-							Notes:     notes,
-							Sig:       fmt.Sprintf("%v", sigsInvolved),
-							Highlight: highlight,
+							URL:   issue.HTMLURL,
+							ID:    issue.Number,
+							Title: issue.Title,
+							Notes: notes,
+							Sig:   fmt.Sprintf("%v", sigsInvolved),
 						},
 					},
 				}

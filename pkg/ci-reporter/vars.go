@@ -39,10 +39,8 @@ const (
 	masterInformingEmoji = "\U0001F4A1"
 	statusFailingEmoji   = "\U0001F534"
 	statusFlakyEmoji     = "\U0001F535"
-	statusNewEmoji       = "\U0001F31F"
+	statusNewEmoji       = "\U00002728"
 	statusOldEmoji       = "\U0001F319"
-	statusActiveEmoji    = "\U000026A1"
-	statusAttentionEmoji = "\U0001F3F4"
 )
 
 const (
