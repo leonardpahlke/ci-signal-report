@@ -142,7 +142,6 @@ func splitReleaseVersionInput(input string) []string {
 	for _, e := range strings.Split(input, ",") {
 		if e != "" {
 			trimStr := strings.TrimSpace(e)
-			fmt.Println(trimStr)
 			found := re.MatchString(trimStr)
 
 			if found {
