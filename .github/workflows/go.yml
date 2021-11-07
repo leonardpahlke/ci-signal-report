@@ -22,10 +22,11 @@ jobs:
               dep ensure
           fi
 
+      - name: Vet
+        run: go vet ./...
+
       - name: Test
-        run: /
-          go vet ./...
-          go test ./...
+        run: go test ./...
 
       - name: Build
         run: go build -v .
