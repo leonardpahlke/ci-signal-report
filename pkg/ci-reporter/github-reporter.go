@@ -35,18 +35,19 @@ type GithubReport struct {
 
 // RequestData this function is used to get github report data
 func (r *GithubReport) RequestData(meta Meta, wg *sync.WaitGroup) ReportData {
-	// labels=kind/failing-test&since=2021-09-01&sort=updated&per_page=100&page=1
+	fourMonthsAgo := time.Now().AddDate(0, -4, 0)
+	fourMonthsAgoStr := fmt.Sprintf("%d-%d-%d", fourMonthsAgo.Year(), fourMonthsAgo.Month(), fourMonthsAgo.Day())
 	requestCfg := []GithubIssueRequest{
 		{
 			Owner:     "kubernetes",
 			Repo:      "kubernetes",
-			Params:    GithubIssueRequestParameters{IssueReqParamLabels: "kind/failing-test", IssueReqParamSince: "2021-09-01", IssueReqParamSort: "updated", IssueReqParamPerpage: "20"},
+			Params:    GithubIssueRequestParameters{IssueReqParamLabels: "kind/failing-test", IssueReqParamSince: fourMonthsAgoStr, IssueReqParamPerpage: "20"},
 			AuthToken: meta.Env.GithubToken,
 		},
 		{
 			Owner:     "kubernetes",
 			Repo:      "kubernetes",
-			Params:    GithubIssueRequestParameters{IssueReqParamLabels: "kind/flake", IssueReqParamSince: "2021-09-01", IssueReqParamSort: "updated", IssueReqParamPerpage: "20"},
+			Params:    GithubIssueRequestParameters{IssueReqParamLabels: "kind/flake", IssueReqParamSince: fourMonthsAgoStr, IssueReqParamPerpage: "20"},
 			AuthToken: meta.Env.GithubToken,
 		},
 	}
