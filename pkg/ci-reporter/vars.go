@@ -31,16 +31,11 @@ const (
 
 // Emojis
 const (
-	inFlightEmoji        = "\U0001F6EB"
-	notYetStartedEmoji   = "\U0001F914"
-	observingEmoji       = "\U0001F440"
-	resolvedEmoji        = "\U0001F389"
 	masterBlockingEmoji  = "\U0001F525"
 	masterInformingEmoji = "\U0001F4A1"
 	statusFailingEmoji   = "\U0001F534"
 	statusFlakyEmoji     = "\U0001F535"
 	statusNewEmoji       = "\U00002728"
-	statusOldEmoji       = "\U0001F319"
 )
 
 const (
