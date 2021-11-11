@@ -99,7 +99,7 @@ func (r GithubReport) GetData() ReportData {
 // run all github requests to assemble data
 func transformIntoReportData(meta Meta, issues GithubIssuesAfterID) chan ReportDataField {
 	c := make(chan ReportDataField)
-	sigRegex := regexp.MustCompile(`sig/[a-zA-Z]+`)
+	sigRegex := regexp.MustCompile(`sig/[a-zA-Z-]+`)
 	go func() {
 		defer close(c)
 		var wg sync.WaitGroup
